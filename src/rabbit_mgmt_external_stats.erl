@@ -32,13 +32,9 @@
 -include_lib("rabbit_common/include/rabbit.hrl").
 
 -define(REFRESH_RATIO, 5000).
--define(KEYS, [os_pid, mem_ets, mem_binary, fd_used, fd_total,
+-define(KEYS, [os_pid, mem_ets, mem_binary, sockets_used, sockets_total,
                mem_used, mem_limit, proc_used, proc_total, statistics_level,
                erlang_version, uptime, run_queue, processors]).
-
-%%--------------------------------------------------------------------
-
--record(state, {time_ms, fd_used, fd_total}).
 
 %%--------------------------------------------------------------------
 
@@ -54,73 +50,6 @@ info(Node) ->
 
 %%--------------------------------------------------------------------
 
-get_used_fd_lsof() ->
-    Lsof = os:cmd("lsof -d \"0-9999999\" -lna -p " ++ os:getpid()),
-    string:words(Lsof, $\n).
-
-get_used_fd() ->
-    get_used_fd(os:type()).
-
-get_used_fd({unix, linux}) ->
-    {ok, Files} = file:list_dir("/proc/" ++ os:getpid() ++ "/fd"),
-    length(Files);
-
-get_used_fd({unix, Os}) when Os =:= darwin
-                      orelse Os =:= freebsd ->
-    get_used_fd_lsof();
-
-%% handle.exe can be obtained from
-%% http://technet.microsoft.com/en-us/sysinternals/bb896655.aspx
-
-%% Output looks like:
-
-%% Handle v3.42
-%% Copyright (C) 1997-2008 Mark Russinovich
-%% Sysinternals - www.sysinternals.com
-%%
-%% Handle type summary:
-%%   ALPC Port       : 2
-%%   Desktop         : 1
-%%   Directory       : 1
-%%   Event           : 108
-%%   File            : 25
-%%   IoCompletion    : 3
-%%   Key             : 7
-%%   KeyedEvent      : 1
-%%   Mutant          : 1
-%%   Process         : 3
-%%   Process         : 38
-%%   Thread          : 41
-%%   Timer           : 3
-%%   TpWorkerFactory : 2
-%%   WindowStation   : 2
-%% Total handles: 238
-
-%% Note that the "File" number appears to include network sockets too; I assume
-%% that's the number we care about. Note also that if you omit "-s" you will
-%% see a list of file handles *without* network sockets. If you then add "-a"
-%% you will see a list of handles of various types, including network sockets
-%% shown as file handles to \Device\Afd.
-
-get_used_fd({win32, _}) ->
-    Handle = os:cmd("handle.exe /accepteula -s -p " ++ os:getpid() ++
-                        " 2> nul"),
-    case Handle of
-        [] -> install_handle_from_sysinternals;
-        _  -> find_files_line(string:tokens(Handle, "\r\n"))
-    end;
-
-get_used_fd(_) ->
-    unknown.
-
-find_files_line([]) ->
-    unknown;
-find_files_line(["  File " ++ Rest | _T]) ->
-    [Files] = string:tokens(Rest, ": "),
-    list_to_integer(Files);
-find_files_line([_H | T]) ->
-    find_files_line(T).
-
 get_memory_limit() ->
     try
         vm_memory_monitor:get_memory_limit()
@@ -131,8 +60,8 @@ get_memory_limit() ->
 
 infos(Items, State) -> [{Item, i(Item, State)} || Item <- Items].
 
-i(fd_used,  #state{fd_used  = FdUsed})  -> FdUsed;
-i(fd_total, #state{fd_total = FdTotal}) -> FdTotal;
+i(sockets_total,  _State) -> file_handle_cache:get_obtain_limit();
+i(sockets_used,   _State) -> file_handle_cache:get_obtain_count();
 i(os_pid,         _State) -> list_to_binary(os:getpid());
 i(mem_ets,        _State) -> erlang:memory(ets);
 i(mem_binary,     _State) -> erlang:memory(binary);
@@ -153,16 +82,9 @@ i(statistics_level, _State) ->
 %%--------------------------------------------------------------------
 
 init([]) ->
-    State = #state{fd_total   = file_handle_cache:ulimit()},
-    {ok, internal_update(State)}.
+    {ok, no_state}.
 
-
-handle_call({info, Items}, _From, State0) ->
-    State = case (rabbit_misc:now_ms() - State0#state.time_ms >
-                      ?REFRESH_RATIO) of
-                true  -> internal_update(State0);
-                false -> State0
-            end,
+handle_call({info, Items}, _From, State) ->
     {reply, infos(Items, State), State};
 
 handle_call(_Req, _From, State) ->
@@ -179,8 +101,3 @@ terminate(_, _) -> ok.
 
 code_change(_, State, _) -> {ok, State}.
 
-%%--------------------------------------------------------------------
-
-internal_update(State) ->
-    State#state{time_ms   = rabbit_misc:now_ms(),
-                fd_used   = get_used_fd()}.
