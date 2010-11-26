@@ -31,7 +31,6 @@
 
 -include_lib("rabbit_common/include/rabbit.hrl").
 
--define(REFRESH_RATIO, 5000).
 -define(KEYS, [os_pid, mem_ets, mem_binary, sockets_used, sockets_total,
                mem_used, mem_limit, proc_used, proc_total, statistics_level,
                erlang_version, uptime, run_queue, processors]).
