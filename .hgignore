@@ -1,8 +1,0 @@
-syntax: regexp
-
-^build/
-^dist/
-.*\.beam
-^ebin/rabbit_management_cluster_remote.app
-^cover/
-^tmp/
