@@ -28,6 +28,12 @@
                     {requires,    rabbit_event},
                     {enables,     recovery}]}).
 
+-rabbit_boot_step({rabbit_mgmt_ext_reset_handler,
+                   [{description, "management extensions"},
+                    {mfa,         {rabbit_mgmt_ext_reset_handler, add_handler,
+                                   []}},
+                    {requires,    rabbit_event},
+                    {enables,     recovery}]}).
 
 start(_Type, _StartArgs) ->
     rabbit_mgmt_agent_sup:start_link().
