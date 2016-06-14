@@ -36,7 +36,8 @@
                uptime, run_queue, processors, exchange_types,
                auth_mechanisms, applications, contexts,
                log_file, sasl_log_file, db_dir, config_files, net_ticktime,
-               enabled_plugins, persister_stats]).
+               enabled_plugins, persister_stats, gc_num, gc_words_reclaimed,
+               context_switches]).
 
 %%--------------------------------------------------------------------
 
@@ -186,6 +187,12 @@ i(db_dir,          _State) -> list_to_binary(rabbit_mnesia:dir());
 i(config_files,    _State) -> [list_to_binary(F) || F <- rabbit:config_files()];
 i(net_ticktime,    _State) -> net_kernel:get_net_ticktime();
 i(persister_stats,  State) -> persister_stats(State);
+i(gc_num,          _State) -> {GCs, _, _} = erlang:statistics(garbage_collection),
+                              GCs;
+i(gc_words_reclaimed, State) -> {_, Words, _} = erlang:statistics(garbage_collection),
+                                Words;
+i(context_switches,   State) -> {Sw, 0} = erlang:statistics(context_switches),
+                                Sw;
 i(enabled_plugins, _State) -> {ok, Dir} = application:get_env(
                                            rabbit, enabled_plugins_file),
                               rabbit_plugins:read_enabled(Dir);
