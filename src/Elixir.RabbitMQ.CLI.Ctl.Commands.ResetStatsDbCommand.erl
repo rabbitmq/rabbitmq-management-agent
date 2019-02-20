@@ -25,7 +25,8 @@
          banner/2,
          run/2,
          output/2,
-         switches/0
+         switches/0,
+         description/0
         ]).
 
 
@@ -34,6 +35,9 @@
 %%----------------------------------------------------------------------------
 usage() ->
      <<"reset_stats_db [--all]">>.
+
+description() ->
+    <<"Resets management stats database for the RabbitMQ node/all nodes in the cluster">>.
 
 validate(_, _) ->
     ok.
