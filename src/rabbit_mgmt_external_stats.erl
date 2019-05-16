@@ -207,7 +207,7 @@ i(uptime,          _State) -> {Total, _} = erlang:statistics(wall_clock),
 i(rates_mode,      _State) -> rabbit_mgmt_db_handler:rates_mode();
 i(exchange_types,  _State) -> list_registry_plugins(exchange);
 i(log_files,       _State) -> [list_to_binary(F) || F <- rabbit:log_locations()];
-i(db_dir,          _State) -> list_to_binary(rabbit_mnesia:dir());
+i(db_dir,          _State) -> list_to_binary(rabbit_data:dir());
 i(config_files,    _State) -> [list_to_binary(F) || F <- rabbit:config_files()];
 i(net_ticktime,    _State) -> net_kernel:get_net_ticktime();
 i(persister_stats,  State) -> persister_stats(State);
