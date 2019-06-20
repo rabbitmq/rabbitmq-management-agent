@@ -184,7 +184,7 @@ log_fd_error(Fmt, Args) ->
 infos(Items, State) -> [{Item, i(Item, State)} || Item <- Items].
 
 i(name,            _State) -> node();
-i(partitions,      _State) -> rabbit_node_monitor:partitions();
+i(partitions,      _State) -> []; % TODO: rabbit_node_monitor:partitions();
 i(fd_used,         _State) -> get_used_fd();
 i(fd_total, #state{fd_total = FdTotal}) -> FdTotal;
 i(sockets_used,    _State) ->
